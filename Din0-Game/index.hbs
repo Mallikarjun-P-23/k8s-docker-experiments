@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dino Game (Handlebars)</title>
+    <style>
+        body {
+            text-align: center;
+            margin-top: 50px;
+            background-color: #f7f7f7;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            background-color: white;
+            border: 1px solid #ddd;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Chrome Dino Game (Handlebars)</h1>
+    
+    {{#if gameOver}}
+    <div class="game-over">
+        <h2>GAME OVER</h2>
+        <p>Score: {{score}}</p>
+        <button onclick="resetGame()">Play Again</button>
+    </div>
+    {{/if}}
+
+    <canvas id="game" width="800" height="300"></canvas>
+
+    <script>
+        // Game state
+        const state = {
+            dino: {
+                x: 50,
+                y: 200,
+                width: 50,
+                height: 50,
+                jumping: false,
+                velocityY: 0,
+                gravity: 1.5
+            },
+            obstacles: [],
+            score: 0,
+            gameSpeed: 5,
+            gameOver: false,
+            highScore: 0
+        };
+
+        // Template context
+        const templateData = {
+            score: state.score,
+            gameOver: state.gameOver
+        };
+
+        // DOM elements
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+
+        // Game functions
+        function drawDino() {
+            ctx.fillStyle = '#333';
+            ctx.fillRect(state.dino.x, state.dino.y, state.dino.width, state.dino.height);
+        }
+
+        function updateDino() {
+            if (state.dino.jumping) {
+                state.dino.y += state.dino.velocityY;
+                state.dino.velocityY += state.dino.gravity;
+                
+                if (state.dino.y >= 200) {
+                    state.dino.y = 200;
+                    state.dino.jumping = false;
+                }
+            }
+        }
+
+        function jump() {
+            if (!state.dino.jumping && !state.gameOver) {
+                state.dino.jumping = true;
+                state.dino.velocityY = -20;
+            }
+        }
+
+        function createObstacle() {
+            if (Math.random() < 0.02) {
+                state.obstacles.push({
+                    x: canvas.width,
+                    y: 200,
+                    width: 30,
+                    height: 30
+                });
+            }
+        }
+
+        function drawObstacles() {
+            ctx.fillStyle = '#555';
+            state.obstacles.forEach(obstacle => {
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+            });
+        }
+
+        function updateObstacles() {
+            for (let i = 0; i < state.obstacles.length; i++) {
+                state.obstacles[i].x -= state.gameSpeed;
+                
+                // Collision detection
+                if (
+                    state.dino.x < state.obstacles[i].x + state.obstacles[i].width &&
+                    state.dino.x + state.dino.width > state.obstacles[i].x &&
+                    state.dino.y < state.obstacles[i].y + state.obstacles[i].height &&
+                    state.dino.y + state.dino.height > state.obstacles[i].y
+                ) {
+                    state.gameOver = true;
+                    templateData.gameOver = true;
+                    if (state.score > state.highScore) {
+                        state.highScore = state.score;
+                    }
+                }
+                
+                // Remove off-screen obstacles
+                if (state.obstacles[i].x + state.obstacles[i].width < 0) {
+                    state.obstacles.splice(i, 1);
+                    state.score++;
+                    templateData.score = state.score;
+                    if (state.score % 5 === 0) state.gameSpeed += 0.5;
+                }
+            }
+        }
+
+        function drawScore() {
+            ctx.fillStyle = '#000';
+            ctx.font = '20px Arial';
+            ctx.fillText(`Score: ${state.score}`, 20, 30);
+            ctx.fillText(`High Score: ${state.highScore}`, 20, 60);
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (!state.gameOver) {
+                updateDino();
+                createObstacle();
+                updateObstacles();
+                
+                drawDino();
+                drawObstacles();
+                drawScore();
+                
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function resetGame() {
+            state.obstacles = [];
+            state.dino.y = 200;
+            state.dino.jumping = false;
+            state.score = 0;
+            templateData.score = 0;
+            state.gameSpeed = 5;
+            state.gameOver = false;
+            templateData.gameOver = false;
+            gameLoop();
+        }
+
+        // Event listeners
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                if (state.gameOver) {
+                    resetGame();
+                } else {
+                    jump();
+                }
+            }
+        });
+
+        // Start game
+        gameLoop();
+    </script>
+</body>
+</html>
